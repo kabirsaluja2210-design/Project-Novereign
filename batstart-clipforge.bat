@@ -43,6 +43,22 @@ if not exist "docker-compose.yml" (
     )
 )
 
+rem --- Pull the latest code before building, so a folder left over from an
+rem     earlier run doesn't silently keep rebuilding stale/broken code. ---
+if exist ".git" (
+    where git >nul 2>nul
+    if not errorlevel 1 (
+        echo Checking for updates ...
+        git pull --ff-only
+        if errorlevel 1 (
+            echo.
+            echo Could not update automatically ^(local changes or a network
+            echo issue^). Continuing with the code already on disk.
+            echo.
+        )
+    )
+)
+
 rem --- Make sure Docker Desktop is installed and running. ---
 where docker >nul 2>nul
 if errorlevel 1 (
