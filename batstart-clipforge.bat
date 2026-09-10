@@ -80,22 +80,27 @@ if not exist ".env" (
     echo.
 )
 
-docker compose up -d --build
+rem --- Full output always goes to a log file too (as well as the screen),
+rem     since the console window usually can't show/scroll far enough back
+rem     to see the actual error. If something fails, open that file. ---
+powershell -NoProfile -Command "docker compose up -d --build 2>&1 | Tee-Object -FilePath clipforge-build.log; exit $LASTEXITCODE"
 if errorlevel 1 (
     echo.
-    echo Something went wrong during the build - scroll up to see the
-    echo red error text and send it back to Claude.
+    echo Something went wrong during the build. Open clipforge-build.log
+    echo in this folder ^(Notepad is fine^), copy its contents, and send
+    echo that back to Claude.
     pause
     exit /b 1
 )
 
 echo.
 echo Running database migrations ...
-docker compose run --rm web npx prisma migrate deploy
+powershell -NoProfile -Command "docker compose run --rm web npx prisma migrate deploy 2>&1 | Tee-Object -FilePath clipforge-build.log; exit $LASTEXITCODE"
 if errorlevel 1 (
     echo.
-    echo Something went wrong running database migrations - scroll up
-    echo to see the red error text and send it back to Claude.
+    echo Something went wrong running database migrations. Open
+    echo clipforge-build.log in this folder ^(Notepad is fine^), copy its
+    echo contents, and send that back to Claude.
     pause
     exit /b 1
 )
