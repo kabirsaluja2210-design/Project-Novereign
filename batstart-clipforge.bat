@@ -2,6 +2,11 @@
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
+rem The fix for the storage-module build error lives on this branch, not
+rem on the repo's default branch yet - clone/track it explicitly so a
+rem plain clone doesn't silently miss it.
+set "REPO_BRANCH=claude/new-session-mobzbb"
+
 echo ================================================================
 echo   Starting ClipForge AI
 echo   (first run can take several minutes)
@@ -31,7 +36,7 @@ if not exist "docker-compose.yml" (
             exit /b 1
         )
         echo Cloning the ClipForge AI project into ".\Project-Novereign" ...
-        git clone https://github.com/kabirsaluja2210-design/Project-Novereign.git Project-Novereign
+        git clone -b %REPO_BRANCH% https://github.com/kabirsaluja2210-design/Project-Novereign.git Project-Novereign
         if errorlevel 1 (
             echo.
             echo Something went wrong during the build - scroll up to see the
@@ -43,13 +48,17 @@ if not exist "docker-compose.yml" (
     )
 )
 
-rem --- Pull the latest code before building, so a folder left over from an
-rem     earlier run doesn't silently keep rebuilding stale/broken code. ---
+rem --- Pull the latest code on the right branch before building, so a
+rem     folder left over from an earlier run (possibly checked out on the
+rem     repo's default branch, which doesn't have this fix) doesn't
+rem     silently keep rebuilding stale/broken code. ---
 if exist ".git" (
     where git >nul 2>nul
     if not errorlevel 1 (
         echo Checking for updates ...
-        git pull --ff-only
+        git fetch origin %REPO_BRANCH%
+        git checkout %REPO_BRANCH%
+        git pull --ff-only origin %REPO_BRANCH%
         if errorlevel 1 (
             echo.
             echo Could not update automatically ^(local changes or a network
