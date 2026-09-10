@@ -13,8 +13,8 @@ dist/
 .env
 .env*.local
 
-# storage (local dev object storage)
-storage/
+# storage (local dev object storage - root only, not src/**/storage)
+/storage/
 
 # misc
 .DS_Store
