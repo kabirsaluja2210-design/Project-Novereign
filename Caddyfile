@@ -1,0 +1,9 @@
+# Minimal reverse proxy with automatic HTTPS (Let's Encrypt) for the
+# single-VPS deployment path in DEPLOYMENT.md.
+#
+# Replace yourdomain.com below with your real domain (DNS A/AAAA record
+# must already point at this host's IP), then run: caddy run --config Caddyfile
+
+yourdomain.com {
+	reverse_proxy localhost:3000
+}

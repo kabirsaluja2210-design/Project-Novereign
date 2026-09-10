@@ -1,0 +1,83 @@
+# Single-host deployment: Postgres + Redis + web + worker, sharing a
+# persistent `media_storage` volume (both the web process, which serves
+# /api/storage/*, and the worker process, which writes generated media,
+# need to see the same files - see ARCHITECTURE.md's Storage section).
+#
+# Usage:
+#   cp .env.example .env   # fill in SESSION_SECRET at minimum
+#   docker compose up -d --build
+#   docker compose run --rm web npx prisma migrate deploy
+#   docker compose run --rm web npm run db:seed
+#   open http://localhost:3000
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: clipforge
+      POSTGRES_PASSWORD: clipforge
+      POSTGRES_DB: clipforge
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clipforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://clipforge:clipforge@postgres:5432/clipforge
+      REDIS_URL: redis://redis:6379
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_DIR: /app/storage
+    volumes:
+      - media_storage:/app/storage
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      target: worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://clipforge:clipforge@postgres:5432/clipforge
+      REDIS_URL: redis://redis:6379
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_DIR: /app/storage
+    volumes:
+      - media_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_storage:
