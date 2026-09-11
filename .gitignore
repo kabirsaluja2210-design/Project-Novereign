@@ -13,8 +13,11 @@ dist/
 .env
 .env*.local
 
-# storage (local dev object storage)
-storage/
+# storage (local dev object storage - the dir this app writes generated
+# media to at runtime, NOT src/server/storage/ or src/app/api/storage/,
+# which are real source code; anchored to the repo root so a bare
+# unanchored "storage/" doesn't shadow those - see CLAUDE_PROGRESS.md)
+/storage/
 
 # misc
 .DS_Store
