@@ -1,6 +1,6 @@
 # Claude Progress Log — ClipForge AI
 
-_Last updated: 2026-09-10_
+_Last updated: 2026-09-11_
 
 ## Current Phase
 
@@ -46,8 +46,19 @@ feature matrix.
 - Mock adapters for text/image/voice that produce **real files** (not
   stubbed success) via ffmpeg (`drawtext` placeholder images, `sine`+
   `tremolo` placeholder audio) and a template-based script generator - see
-  `PROVIDERS.md`. A real `OpenAITextProvider` adapter exists behind
-  `OPENAI_API_KEY` but has not been exercised in this sandbox (no key here).
+  `PROVIDERS.md`.
+- Real adapters, all router-prioritized ahead of Mock, none live-tested in
+  this sandbox (no API keys configured here - see PROVIDERS.md for exactly
+  what "not live-tested" does and doesn't mean):
+  - `OpenAITextProvider` (`OPENAI_API_KEY`) - script generation.
+  - `ReplicateImageProvider` (`REPLICATE_API_TOKEN`, flux-schnell) - polls
+    Replicate's prediction API, downloads the result, uploads to storage.
+  - `ElevenLabsVoiceProvider` (`ELEVENLABS_API_KEY`) - uses the
+    `with-timestamps` endpoint for real character-level alignment, grouped
+    into word-level caption timing (more accurate than the mock's
+    evenly-spaced estimate). Known limitation: always speaks with one fixed
+    premade voice until real ElevenLabs rows are seeded into the `Voice`
+    catalog - the user's voice selection is ignored until then.
 
 **Job system & pipeline**
 - BullMQ + Redis queue, Postgres-persisted `Job`/`JobStep` rows, 5-stage
@@ -89,13 +100,27 @@ ledger produced exactly the expected `SUBSCRIPTION_GRANT` →
 `GENERATION_RESERVE` (-95) → `GENERATION_SETTLEMENT` (+10 refund, actual
 cost 85) sequence with a correct final balance.
 
+**Deployed and generating on a real machine outside this sandbox** - the
+Docker Compose setup (`Dockerfile`/`docker-compose.yml`) was carried through
+a full real-world install on the user's own Windows machine (Docker Desktop
++ WSL2), including diagnosing and fixing several genuine environment issues
+along the way (WSL integration not enabled, docker group permissions,
+transient containerd storage corruption, PowerShell not supporting `<`
+redirection, Notepad silently appending `.txt`). End result: a live signup,
+a live Quick Create run, and a real downloaded MP4 confirmed via `ffprobe`
+(1080×1920, H.264/AAC, ~37s) - on infrastructure this session never touched.
+That's the strongest evidence yet that `DEPLOYMENT.md`'s Path A is sound,
+independent of anything run in this sandbox.
+
 ## In Progress / Not Started
 
 See `PRODUCT_SPEC.md`'s feature matrix for the full list. Highlights:
-real image/video/voice provider adapters, character-consistency prompt
-injection, video editor timeline, social publishing OAuth, automation
-scheduler, Stripe billing, admin console, ML-based moderation, i18n
-catalogs, true crossfade transitions, hard-delete-on-account-deletion.
+character-consistency prompt injection, video editor timeline, social
+publishing OAuth, automation scheduler, Stripe billing, admin console,
+ML-based moderation, i18n catalogs, true crossfade transitions,
+hard-delete-on-account-deletion, real video-gen and music/SFX adapters,
+seeding a real per-provider `Voice` catalog (needed before ElevenLabs voice
+selection actually works).
 
 ## Blocked
 
@@ -132,16 +157,24 @@ what's manually-verified-only.
 
 - `DATABASE_URL`, `REDIS_URL`, `SESSION_SECRET` — required to run at all.
 - `ffmpeg` on `PATH` for the worker process.
-- Optional: `OPENAI_API_KEY` (real script generation instead of the
-  template-based mock), `GOOGLE_CLIENT_ID`/`SECRET` (Google OAuth - route
-  not yet implemented, schema only), `STORAGE_*` (S3-compatible storage
-  instead of local disk).
+- Optional: `OPENAI_API_KEY` (real script generation), `REPLICATE_API_TOKEN`
+  (real scene images), `ELEVENLABS_API_KEY` (real narration),
+  `GOOGLE_CLIENT_ID`/`SECRET` (Google OAuth - route not yet implemented,
+  schema only), `STORAGE_*` (S3-compatible storage instead of local disk).
+  Without any of the three provider keys, generation runs entirely on Mock
+  adapters - real files, placeholder content, by design (see PROVIDERS.md).
 
 ## Next Actions (recommended order)
 
-1. Add a real image-generation adapter (Replicate or similar) behind an API
-   key — highest-leverage change since it's the most visible "mock" artifact.
-2. Add a real TTS adapter (ElevenLabs/AWS Polly) the same way.
+1. Get a real `REPLICATE_API_TOKEN` and `ELEVENLABS_API_KEY` into a real
+   deployment and confirm one full generation end-to-end - this is the one
+   thing about the two new adapters this session could not do (no keys in
+   this sandbox). Watch the worker logs and `ProviderUsage` rows on the
+   first run.
+2. Seed real ElevenLabs voice rows into the `Voice` table (map a handful of
+   ElevenLabs premade/cloned voice ids to catalog entries) so the voice
+   picker in Quick Create actually controls which voice speaks, instead of
+   every real generation using the one hard-coded fallback voice.
 3. Character-consistency prompt injection: when a scene's project has a
    selected `Character`, prepend its canonical `description` to every scene
    `visualPrompt` sent to the image provider (the `Character` table and CRUD

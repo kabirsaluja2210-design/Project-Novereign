@@ -57,10 +57,17 @@ logging every attempt to `ProviderUsage` for cost/margin reporting.
 | Capability | Real adapter | Status |
 |---|---|---|
 | Text | `OpenAITextProvider` (`OPENAI_API_KEY`) | Implemented, **not live-tested in this sandbox** (no key configured here) - review before trusting in production |
-| Image | — | Not implemented. Add an adapter for Replicate/Fal/Stability/etc. behind an API key. |
-| Voice | — | Not implemented. Add an adapter for ElevenLabs/AWS Polly/etc. behind an API key. |
+| Image | `ReplicateImageProvider` (`REPLICATE_API_TOKEN`, `black-forest-labs/flux-schnell`) | Implemented, **not live-tested in this sandbox** (no key configured here). Polls Replicate's official-model prediction endpoint, downloads the result, uploads to storage. Maps the requested pixel size to the nearest of Replicate's supported aspect-ratio enum values. |
+| Voice | `ElevenLabsVoiceProvider` (`ELEVENLABS_API_KEY`) | Implemented, **not live-tested in this sandbox** (no key configured here). Uses ElevenLabs' `with-timestamps` endpoint, so caption/render timing comes from real character-level alignment rather than the mock's evenly-spaced estimate. **Known limitation**: the seeded `Voice` catalog only has mock provider rows today, so this adapter ignores the user's voice selection and always speaks with one fixed premade voice ("Rachel") until real ElevenLabs voice rows are seeded - see PRODUCT_SPEC.md roadmap. |
 | Video (text-to-video / image-to-video) | — | Not implemented. The render pipeline currently only does Ken Burns motion over still images (directive §139 cheap mode); a real video-gen adapter is a genuinely separate, higher-cost integration. |
 | Music / SFX | — | Not implemented (schema exists: `Project.musicEnabled`/`sfxEnabled`, `OPERATION_COSTS.MUSIC_TRACK`/`SFX_PER_SCENE`, but no generation call is made yet). |
+
+Both new adapters were built the same way as the OpenAI text adapter: written and
+code-reviewed against each provider's public API docs, wired into the router
+ahead of Mock, and verified to typecheck/lint/build cleanly - but neither has
+been exercised against a live API key in this sandbox. Test with a real key
+before relying on them in production, and watch `ProviderUsage` / worker logs
+on the first few real generations.
 
 ## Model Router health/fallback
 

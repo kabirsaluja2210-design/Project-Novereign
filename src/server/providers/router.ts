@@ -9,7 +9,9 @@ import type {
 import { MockTextProvider } from "./text/mock";
 import { OpenAITextProvider } from "./text/openai";
 import { MockImageProvider } from "./image/mock";
+import { ReplicateImageProvider } from "./image/replicate";
 import { MockVoiceProvider } from "./voice/mock";
+import { ElevenLabsVoiceProvider } from "./voice/elevenlabs";
 
 /**
  * Model Router (directive §9/§225). Providers for each capability are tried
@@ -17,11 +19,15 @@ import { MockVoiceProvider } from "./voice/mock";
  * or one reporting unhealthy (rolling error rate in Redis) is skipped. Every
  * attempt - success or failure - is logged to ProviderUsage for cost/margin
  * reporting (directive §223).
+ *
+ * Real providers are listed first so they win whenever their API key is
+ * configured (`isAvailable()` returns false otherwise and they're skipped) -
+ * Mock is always last as the zero-config fallback.
  */
 
 const TEXT_PROVIDERS: TextGenerationProvider[] = [new OpenAITextProvider(), new MockTextProvider()];
-const IMAGE_PROVIDERS: ImageGenerationProvider[] = [new MockImageProvider()];
-const VOICE_PROVIDERS: VoiceGenerationProvider[] = [new MockVoiceProvider()];
+const IMAGE_PROVIDERS: ImageGenerationProvider[] = [new ReplicateImageProvider(), new MockImageProvider()];
+const VOICE_PROVIDERS: VoiceGenerationProvider[] = [new ElevenLabsVoiceProvider(), new MockVoiceProvider()];
 
 const HEALTH_WINDOW_SEC = 300;
 const HEALTH_FAILURE_THRESHOLD = 5;
