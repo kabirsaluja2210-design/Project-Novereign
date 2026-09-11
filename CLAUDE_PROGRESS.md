@@ -60,6 +60,34 @@ feature matrix.
     premade voice until real ElevenLabs rows are seeded into the `Voice`
     catalog - the user's voice selection is ignored until then.
 
+**No-API-key operation (Piper local TTS)**
+- Added in direct response to the request "create the platform so no APIs
+  are needed": `PiperVoiceProvider` (`src/server/providers/voice/piper.ts`)
+  wraps [Piper](https://github.com/rhasspy/piper), a real offline neural TTS
+  engine, run as a spawned local binary - genuine synthesized speech with no
+  API key, no account, no per-request cost, and no network access at
+  runtime. Slotted into the voice router between ElevenLabs and Mock, so the
+  full fallback chain is: ElevenLabs (best quality, needs a key) → Piper
+  (real speech, no key) → Mock (placeholder tone, always available). Word
+  timing is evenly distributed across the real ffprobe-measured output
+  duration, not phoneme-accurate like ElevenLabs but genuine measured audio,
+  not an estimate.
+- The Piper binary and voice model are downloaded once at **Docker build
+  time** into a new `piper` build stage and copied into the `worker` image
+  only (the `web` image never calls voice providers) - the running
+  containers make no outbound calls for this. With no `OPENAI_API_KEY`,
+  `REPLICATE_API_TOKEN`, or `ELEVENLABS_API_KEY` set at all, the platform
+  now runs the full idea→script→scenes→images→voice→captions→render
+  pipeline with zero external API dependencies: Mock for text/images, Piper
+  for real synthesized speech.
+- Honesty note carried into `PROVIDERS.md` and the Dockerfile: this
+  sandbox's network policy returns 403 for both `github.com` (Piper's
+  release binary) and `huggingface.co` (the voice model), so the download
+  URLs are written from Piper's documented, historically stable release/
+  asset naming but were **not** verified live. If the build 404s on that
+  stage, the fix is a one-line build-arg update (current release tag/asset
+  name from https://github.com/rhasspy/piper/releases), not a code change.
+
 **Job system & pipeline**
 - BullMQ + Redis queue, Postgres-persisted `Job`/`JobStep` rows, 5-stage
   pipeline (script_generation → image_generation + voice_generation →

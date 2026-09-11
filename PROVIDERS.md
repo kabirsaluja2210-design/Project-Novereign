@@ -58,16 +58,30 @@ logging every attempt to `ProviderUsage` for cost/margin reporting.
 |---|---|---|
 | Text | `OpenAITextProvider` (`OPENAI_API_KEY`) | Implemented, **not live-tested in this sandbox** (no key configured here) - review before trusting in production |
 | Image | `ReplicateImageProvider` (`REPLICATE_API_TOKEN`, `black-forest-labs/flux-schnell`) | Implemented, **not live-tested in this sandbox** (no key configured here). Polls Replicate's official-model prediction endpoint, downloads the result, uploads to storage. Maps the requested pixel size to the nearest of Replicate's supported aspect-ratio enum values. |
-| Voice | `ElevenLabsVoiceProvider` (`ELEVENLABS_API_KEY`) | Implemented, **not live-tested in this sandbox** (no key configured here). Uses ElevenLabs' `with-timestamps` endpoint, so caption/render timing comes from real character-level alignment rather than the mock's evenly-spaced estimate. **Known limitation**: the seeded `Voice` catalog only has mock provider rows today, so this adapter ignores the user's voice selection and always speaks with one fixed premade voice ("Rachel") until real ElevenLabs voice rows are seeded - see PRODUCT_SPEC.md roadmap. |
+| Voice (cloud, best quality) | `ElevenLabsVoiceProvider` (`ELEVENLABS_API_KEY`) | Implemented, **not live-tested in this sandbox** (no key configured here). Uses ElevenLabs' `with-timestamps` endpoint, so caption/render timing comes from real character-level alignment rather than an estimate. **Known limitation**: the seeded `Voice` catalog only has mock provider rows today, so this adapter ignores the user's voice selection and always speaks with one fixed premade voice ("Rachel") until real ElevenLabs voice rows are seeded - see PRODUCT_SPEC.md roadmap. |
+| Voice (local, no API key) | `PiperVoiceProvider` (baked into the Docker image at build time - no env var needed) | Implemented using [Piper](https://github.com/rhasspy/piper), a real offline neural TTS engine - genuine synthesized speech with **zero API keys, zero accounts, zero per-request cost, and no network access at runtime**. Automatically used whenever `ELEVENLABS_API_KEY` is unset and the Piper binary/model are present (see Dockerfile). Timing is evenly distributed across the real, ffprobe-measured output duration - not phoneme-accurate like ElevenLabs, but honestly synthesized speech, not a placeholder tone. **Could not be verified end-to-end in this sandbox**: this session's network policy returns 403 for both `github.com` (Piper's release binary) and `huggingface.co` (the voice model), so the Dockerfile's download step is written from documented, historically stable URLs but is unverified. If it 404s on your build, check https://github.com/rhasspy/piper/releases for the current release tag/asset name and pass updated `--build-arg PIPER_VERSION=...`/`PIPER_ASSET=...` values. |
 | Video (text-to-video / image-to-video) | — | Not implemented. The render pipeline currently only does Ken Burns motion over still images (directive §139 cheap mode); a real video-gen adapter is a genuinely separate, higher-cost integration. |
 | Music / SFX | — | Not implemented (schema exists: `Project.musicEnabled`/`sfxEnabled`, `OPERATION_COSTS.MUSIC_TRACK`/`SFX_PER_SCENE`, but no generation call is made yet). |
 
-Both new adapters were built the same way as the OpenAI text adapter: written and
-code-reviewed against each provider's public API docs, wired into the router
-ahead of Mock, and verified to typecheck/lint/build cleanly - but neither has
-been exercised against a live API key in this sandbox. Test with a real key
-before relying on them in production, and watch `ProviderUsage` / worker logs
-on the first few real generations.
+The Replicate and ElevenLabs adapters were built the same way as the OpenAI
+text adapter: written and code-reviewed against each provider's public API
+docs, wired into the router ahead of Mock, and verified to typecheck/lint/
+build cleanly - but neither has been exercised against a live API key in this
+sandbox. Test with a real key before relying on them in production, and watch
+`ProviderUsage` / worker logs on the first few real generations.
+
+Piper is different: it needs no API key at all, so "untested with a real
+key" doesn't apply - the open question there is only whether the Dockerfile's
+hardcoded download URLs still resolve on your build host (this sandbox's
+network policy couldn't confirm that; see the table above and the Dockerfile
+comments for what to do if they've moved).
+
+**If you want a platform that runs with literally zero external API
+dependencies**, leave `OPENAI_API_KEY`, `REPLICATE_API_TOKEN`, and
+`ELEVENLABS_API_KEY` all unset. The router then always falls through to
+Piper for voice (real local speech synthesis) and Mock for text/images
+(real template scripts and labeled placeholder frames) - nothing in the
+generation path makes an outbound network call at runtime.
 
 ## Model Router health/fallback
 

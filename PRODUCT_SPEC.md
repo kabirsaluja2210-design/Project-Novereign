@@ -79,7 +79,7 @@ exist) but no UI/worker yet · 📋 roadmap only (design intent captured here).
 | Scene planning / storyboard | ✅ | scenes persisted, regenerate-one-scene supported at data layer |
 | Image generation | ✅ | Mock adapter (deterministic placeholder frames) + real Replicate (flux-schnell) adapter behind `REPLICATE_API_TOKEN`, not live-tested in this sandbox |
 | Video generation (text/image-to-video) | 📋 | provider interface defined; no adapter implemented (needs a funded provider) |
-| Voice / narration | ✅ | Mock TTS (deterministic tone) + real ElevenLabs adapter behind `ELEVENLABS_API_KEY` (real word-level timing via character alignment), not live-tested in this sandbox |
+| Voice / narration | ✅ | Three-tier fallback: real ElevenLabs adapter behind `ELEVENLABS_API_KEY` (best quality, real word-level timing via character alignment, not live-tested in this sandbox) → real local Piper TTS (no API key, no account, baked into the Docker image, genuine offline speech synthesis) → Mock TTS (deterministic placeholder tone) as the last resort. With no keys configured at all, the platform still produces real synthesized speech via Piper, not just a placeholder tone. |
 | Captions | ✅ | generated from narration script timing, burned into final render |
 | Music / SFX | 🚧 | schema + timeline fields exist; auto-generation not implemented |
 | FFmpeg render (Ken Burns + captions + narration) | ✅ | real ffmpeg pipeline, tested |
