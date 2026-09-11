@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.env
+.env.local
+npm-debug.log*
+
+# NOTE: intentionally NOT ignoring "storage" here - that name collides with
+# the real source directory src/server/storage/. A bare `storage` entry
+# excludes any directory with that name at any depth, which silently broke
+# the Docker build (see CLAUDE_PROGRESS.md). The local dev media directory
+# at the repo root gets copied into the image if present, which only costs
+# a little image size - a correctness bug is worse than that.
